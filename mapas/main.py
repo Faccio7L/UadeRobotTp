@@ -31,6 +31,18 @@ def main():
 
         except ValueError:
             print("Por favor ingrese un número válido.")
+    algoritmo_greedy(seleccionado)
+
+def algoritmo_greedy(mapa):
+    inicio = mapa["inicio"]
+    fin = mapa["destino"]
+    tamanio = mapa["tamano_celda_metros"]
+    orientacion = mapa["orientacion_inicial"]
+    maxPasos = mapa["maximo_pasos"]
+    
+def Manhattan(inicio,fin):
+    return abs(inicio[0]-fin[0]) + abs(inicio[1]-fin[1])
+    #[0] hace referencia a columna, [1] hace referencia a fila.
 
 main()
 
