@@ -110,6 +110,7 @@ def generar_instrucciones(ruta, orientacion, tamanio):
 def ejecutar_en_robot(robot, instrucciones):
     """
     Envía secuencialmente cada orden planificada de manera anterior. Estan todas las instrucciones planificadas.
+    la distancia se expresa en metros sobre segundos como indica el repositorio original
 """
     TIEMPO_AVANCE = 2
     TIEMPO_GIRO = 3.14
