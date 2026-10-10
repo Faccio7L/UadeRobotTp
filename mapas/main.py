@@ -13,6 +13,20 @@ except ImportError:
     RobotG1 = None
 
 
+def cargar_todos_los_mapas(carpeta):
+    """
+    Importa todos los mapas.
+    """
+    mapas = {}
+
+    for archivo in os.listdir(carpeta):
+        if archivo.startswith("mapa") and archivo.endswith(".json"):
+            numero = int(archivo[4:-5])
+
+            with open(os.path.join(carpeta, archivo), "r", encoding="utf-8") as arch:
+                mapas[numero] = json.load(arch)
+
+    return mapas, len(mapas)
 
 
 def Manhattan(inicio, fin):
@@ -48,11 +62,11 @@ def encontrarMejorManhattan(posicion, fin, grilla, posiciones_visitas):
     else:
         M_abajo = Manhattan((posicion[0]+1, posicion[1]), fin)    
     return M_derecha, M_izquierda, M_arriba, M_abajo
-    
+
 
 def nueva_ubicacion(direccion, posicion):
     """
-    Calcula la próxima coordenada lógica en la grilla antes del movimiento físico.
+    Calcula la proxima coordenada logica en la grilla antes del movimiento fisico.
     """
     if direccion == "derecha":
         posicion = (posicion[0], posicion[1]+1)
@@ -62,12 +76,15 @@ def nueva_ubicacion(direccion, posicion):
         posicion = (posicion[0]+1, posicion[1])
     elif direccion == "arriba":
         posicion = (posicion[0]-1, posicion[1])
-    print(f"El robot se desplazará hacia {direccion}. Próxima posición: {posicion}")
+    print(f"El robot se desplazara hacia {direccion}. Proxima posicion: {posicion}")
     return posicion
 
 
 def generar_instrucciones(ruta, orientacion, tamanio):
-    ori = orientacion.upper()
+    """
+    Genera la secuencia de giros y avances segun la ruta calculada.
+    """
+    orientacionNueva = orientacion.upper()
     pasos = []
        
     for i in range(len(ruta) - 1):
@@ -79,52 +96,49 @@ def generar_instrucciones(ruta, orientacion, tamanio):
         
         if df == 1: 
             destino = "SUR"
-            if ori == "ESTE": pasos.append("GIRAR DERECHA 90")
-            elif ori == "OESTE": pasos.append("GIRAR IZQUIERDA 90")
-            elif ori == "NORTE": pasos.append("GIRAR 180")
+            if orientacionNueva == "ESTE": pasos.append("GIRAR DERECHA 90")
+            elif orientacionNueva == "OESTE": pasos.append("GIRAR IZQUIERDA 90")
+            elif orientacionNueva == "NORTE": pasos.append("GIRAR 180")
         elif dc == 1: 
             destino = "ESTE"
-            if ori == "NORTE": pasos.append("GIRAR DERECHA 90")
-            elif ori == "SUR": pasos.append("GIRAR IZQUIERDA 90")
-            elif ori == "OESTE": pasos.append("GIRAR 180")
+            if orientacionNueva == "NORTE": pasos.append("GIRAR DERECHA 90")
+            elif orientacionNueva == "SUR": pasos.append("GIRAR IZQUIERDA 90")
+            elif orientacionNueva == "OESTE": pasos.append("GIRAR 180")
         elif dc == -1: 
             destino = "OESTE"
-            if ori == "SUR": pasos.append("GIRAR DERECHA 90")
-            elif ori == "NORTE": pasos.append("GIRAR IZQUIERDA 90")
-            elif ori == "ESTE": pasos.append("GIRAR 180")
+            if orientacionNueva == "SUR": pasos.append("GIRAR DERECHA 90")
+            elif orientacionNueva == "NORTE": pasos.append("GIRAR IZQUIERDA 90")
+            elif orientacionNueva == "ESTE": pasos.append("GIRAR 180")
         else:
             destino = "NORTE"
-            if ori == "OESTE": pasos.append("GIRAR DERECHA 90")
-            elif ori == "ESTE": pasos.append("GIRAR IZQUIERDA 90")
-            elif ori == "SUR": pasos.append("GIRAR 180")
+            if orientacionNueva == "OESTE": pasos.append("GIRAR DERECHA 90")
+            elif orientacionNueva == "ESTE": pasos.append("GIRAR IZQUIERDA 90")
+            elif orientacionNueva == "SUR": pasos.append("GIRAR 180")
         
-        pasos.append(f"AVANZAR {tamanio} m")
-        ori = destino
+        pasos.append("AVANZAR") #si gira, se agrega el giro y dsp que camine medio metro.
+        orientacionNueva = destino
         
-    return ", ".join(pasos)
-
+    return pasos
 
 
 def ejecutar_en_robot(robot, instrucciones):
     """
-    Envía secuencialmente cada orden planificada de manera anterior. Estan todas las instrucciones planificadas.
-    la distancia se expresa en metros sobre segundos como indica el repositorio originalx
-"""
+    Envia secuencialmente cada orden planificada de manera anterior.
+    """
     TiempoAvance = 2
     TiempoGiro = 3.14
-    for paso in instrucciones.split(", "):
-        paso = paso.strip()
+    for paso in instrucciones:
         if "AVANZAR" in paso:
-            robot.movimiento(adelante=0.25, tiempo=TiempoAvance)
+            robot.movimiento(adelante=0.25, tiempo=TiempoAvance) #ESTO ES METROS Y SEGUNDOS.
         elif "DERECHA" in paso:
-            robot.movimiento(giro=-0.5, tiempo=TiempoGiro)
+            robot.movimiento(giro=-0.5, tiempo=TiempoGiro) #rota 90 grados en 3.14 segundos(pi)
         elif "IZQUIERDA" in paso:
             robot.movimiento(giro=0.5, tiempo=TiempoGiro)
         elif "180" in paso:
             robot.movimiento(giro=0.5, tiempo=TiempoGiro * 2)
 
 
-def algoritmo_greedy(mapa, robot=None):
+def algoritmo_greedy(mapa, robot):
     """
     Desarma el diccionario del mapa, se itera hasta encontrar(o no) la solucion.
     """
@@ -139,7 +153,7 @@ def algoritmo_greedy(mapa, robot=None):
     grilla = mapa["grilla"]
     posiciones_visitas.add(posicion)
     
-    ruta = [posicion] #lista de tuplas, contiene todas las posiciones visitadas en orden.
+    ruta = [posicion]
 
     while pasos < maxPasos:
         if posicion == fin:
@@ -167,30 +181,13 @@ def algoritmo_greedy(mapa, robot=None):
         ruta.append(posicion)
         
     if pasos >= maxPasos and posicion != fin:
-        print("Se alcanzó el máximo de pasos permitidos. El robot no llegó al destino.")
+        print("Se alcanzo el maximo de pasos permitidos. El robot no llego al destino.")
 
-    
     instrucciones = generar_instrucciones(ruta, orientacion, tamanio)
-    print(instrucciones)
+    print(", ".join(instrucciones)) #para mostrarlas en pantalla.
 
     if robot:
         ejecutar_en_robot(robot, instrucciones)
-
-
-def cargar_todos_los_mapas(carpeta):
-    """
-    Importa todos los mapas.
-    """
-    mapas = {}
-
-    for archivo in os.listdir(carpeta):
-        if archivo.startswith("mapa") and archivo.endswith(".json"):
-            numero = int(archivo[4:-5])
-
-            with open(os.path.join(carpeta, archivo), "r", encoding="utf-8") as arch:
-                mapas[numero] = json.load(arch)
-
-    return mapas, len(mapas)
 
 
 def main():
@@ -201,16 +198,16 @@ def main():
 
     while True:
         try:
-            mapa = int(input(f"Hay {cantidad_mapas} mapas disponibles.Ingrese el numero del mapa: "))
+            mapa = int(input(f"Hay {cantidad_mapas} mapas disponibles. Ingrese el numero del mapa: "))
             if mapa not in mapas:
-                print("Por favor elija un mapa válido.")
+                print("Por favor elija un mapa valido.")
             else:
                 print(f"Mapa {mapa} cargado exitosamente.")
                 seleccionado = mapas[mapa]
                 break
 
         except ValueError:
-            print("Por favor ingrese un número válido.")
+            print("Por favor ingrese un numero valido.")
 
     robot = None
     if RobotG1 is not None:
@@ -218,7 +215,7 @@ def main():
             robot = RobotG1()
             robot.conectar()
         except Exception:
-            print("El algoritmo se ejecutará en la consola.")
+            print("El algoritmo se ejecutara en la consola.")
             robot = None
 
     try:
