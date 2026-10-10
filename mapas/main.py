@@ -2,7 +2,7 @@ import os
 import sys
 import json
 
-# Permite encontrar la API del robot G1 del simulador
+
 _ruta_sim = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "04Simuladores", "UnitreeMujocoOficial"))
 if _ruta_sim not in sys.path:
     sys.path.insert(0, _ruta_sim)
@@ -67,63 +67,61 @@ def nueva_ubicacion(direccion, posicion):
 
 
 def generar_instrucciones(ruta, orientacion, tamanio):
-    
     ori = orientacion.upper()
     pasos = []
-    
-    # Giros posibles segun donde miro y el cambio en (fila, columna)
-    giros = {
-        ("NORTE", 0, 1): "GIRAR DERECHA 90°", ("NORTE", 0, -1): "GIRAR IZQUIERDA 90°", ("NORTE", 1, 0): "GIRAR 180°",
-        ("ESTE", 1, 0): "GIRAR DERECHA 90°", ("ESTE", -1, 0): "GIRAR IZQUIERDA 90°", ("ESTE", 0, -1): "GIRAR 180°",
-        ("SUR", 0, -1): "GIRAR DERECHA 90°", ("SUR", 0, 1): "GIRAR IZQUIERDA 90°", ("SUR", -1, 0): "GIRAR 180°",
-        ("OESTE", -1, 0): "GIRAR DERECHA 90°", ("OESTE", 1, 0): "GIRAR IZQUIERDA 90°", ("OESTE", 0, 1): "GIRAR 180°",
-    }
-    
+       
     for i in range(len(ruta) - 1):
+        (fila1, columna1) = ruta[i]
+        (fila2, columna2) = ruta[i+1]
         
-        (f1, c1) = ruta[i]
-        (f2, c2) = ruta[i+1]
+        df = fila2 - fila1
+        dc = columna2 - columna1
         
-        df = f2 - f1
-        dc = c2 - c1
-        
-        if df > 0: 
+        if df == 1: 
             destino = "SUR"
-        elif dc > 0: 
+            if ori == "ESTE": pasos.append("GIRAR DERECHA 90")
+            elif ori == "OESTE": pasos.append("GIRAR IZQUIERDA 90")
+            elif ori == "NORTE": pasos.append("GIRAR 180")
+        elif dc == 1: 
             destino = "ESTE"
-        elif dc < 0: 
+            if ori == "NORTE": pasos.append("GIRAR DERECHA 90")
+            elif ori == "SUR": pasos.append("GIRAR IZQUIERDA 90")
+            elif ori == "OESTE": pasos.append("GIRAR 180")
+        elif dc == -1: 
             destino = "OESTE"
+            if ori == "SUR": pasos.append("GIRAR DERECHA 90")
+            elif ori == "NORTE": pasos.append("GIRAR IZQUIERDA 90")
+            elif ori == "ESTE": pasos.append("GIRAR 180")
         else:
             destino = "NORTE"
+            if ori == "OESTE": pasos.append("GIRAR DERECHA 90")
+            elif ori == "ESTE": pasos.append("GIRAR IZQUIERDA 90")
+            elif ori == "SUR": pasos.append("GIRAR 180")
         
-        # Buscamos en el diccionario si hay que girar
-        giro_texto = giros.get((ori, df, dc), "")
-        if giro_texto:
-            pasos.append(giro_texto)
-            
         pasos.append(f"AVANZAR {tamanio} m")
         ori = destino
         
     return ", ".join(pasos)
 
 
+
 def ejecutar_en_robot(robot, instrucciones):
     """
     Envía secuencialmente cada orden planificada de manera anterior. Estan todas las instrucciones planificadas.
-    la distancia se expresa en metros sobre segundos como indica el repositorio original
+    la distancia se expresa en metros sobre segundos como indica el repositorio originalx
 """
-    TIEMPO_AVANCE = 2
-    TIEMPO_GIRO = 3.14
+    TiempoAvance = 2
+    TiempoGiro = 3.14
     for paso in instrucciones.split(", "):
         paso = paso.strip()
         if "AVANZAR" in paso:
-            robot.movimiento(adelante=0.25, tiempo=TIEMPO_AVANCE)
+            robot.movimiento(adelante=0.25, tiempo=TiempoAvance)
         elif "DERECHA" in paso:
-            robot.movimiento(giro=-0.5, tiempo=TIEMPO_GIRO)
+            robot.movimiento(giro=-0.5, tiempo=TiempoGiro)
         elif "IZQUIERDA" in paso:
-            robot.movimiento(giro=0.5, tiempo=TIEMPO_GIRO)
+            robot.movimiento(giro=0.5, tiempo=TiempoGiro)
         elif "180" in paso:
-            robot.movimiento(giro=0.5, tiempo=TIEMPO_GIRO * 2)
+            robot.movimiento(giro=0.5, tiempo=TiempoGiro * 2)
 
 
 def algoritmo_greedy(mapa, robot=None):
