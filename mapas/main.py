@@ -52,7 +52,7 @@ def encontrarMejorManhattan(posicion, fin, grilla, posiciones_visitas):
     else:
         M_izquierda = Manhattan((posicion[0], posicion[1]-1), fin)
 
-    if posicion[0] - 1 < 0 or grilla[posicion[0]][posicion[1]] in (1, 2) or (posicion[0]-1, posicion[1]) in posiciones_visitas: 
+    if posicion[0] - 1 < 0 or grilla[posicion[0]-1][posicion[1]] in (1, 2) or (posicion[0]-1, posicion[1]) in posiciones_visitas: 
         M_arriba = float("inf")
     else:
         M_arriba = Manhattan((posicion[0]-1, posicion[1]), fin)
@@ -157,7 +157,7 @@ def algoritmo_greedy(mapa, robot):
 
     while pasos < maxPasos:
         if posicion == fin:
-            print(f"El robot llego en {pasos} pasos.")
+            print(f"El robot llegara en {pasos} pasos.")
             break
 
         M_derecha, M_izquierda, M_arriba, M_abajo = encontrarMejorManhattan(posicion, fin, grilla, posiciones_visitas)
@@ -180,8 +180,8 @@ def algoritmo_greedy(mapa, robot):
         posiciones_visitas.add(posicion)
         ruta.append(posicion)
         
-    if pasos >= maxPasos and posicion != fin:
-        print("Se alcanzo el maximo de pasos permitidos. El robot no llego al destino.")
+    if pasos >= maxPasos or posicion != fin:
+        print("El robot no llego al destino.")
 
     instrucciones = generar_instrucciones(ruta, orientacion, tamanio)
     print(", ".join(instrucciones)) #para mostrarlas en pantalla.
