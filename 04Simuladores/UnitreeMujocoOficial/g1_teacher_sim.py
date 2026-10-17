@@ -96,7 +96,7 @@ class G1TeacherState:
         self.forward = 0.0
         self.side = 0.0
         self.turn = 0.0
-        self.motion_until = 0.0
+        self.motion_remaining = 0.0
         self.neutral_pose = neutral_pose.copy()
         self.target_pose = neutral_pose.copy()
         self.display_pose = neutral_pose.copy()
@@ -107,19 +107,23 @@ class G1TeacherState:
         adelante = clamp(float(adelante), -0.45, 0.45)
         costado = clamp(float(costado), -0.30, 0.30)
         giro = clamp(float(giro), -1.0, 1.0)
-        tiempo = clamp(float(tiempo), 0.0, 10.0)
+        tiempo = clamp(float(tiempo), 0.0, 30.0)
 
         with self.lock:
             self.forward = adelante
             self.side = costado
             self.turn = giro
-            self.motion_until = time.perf_counter() + tiempo
+            self.motion_remaining = float(tiempo)
             self.last_action = "movimiento"
 
     def run_motion(self, adelante: float, costado: float, giro: float, tiempo: float) -> None:
         with self.command_lock:
             self.start_motion(adelante, costado, giro, tiempo)
-            time.sleep(clamp(float(tiempo), 0.0, 10.0))
+            while True:
+                with self.lock:
+                    if self.motion_remaining <= 0.0:
+                        break
+                time.sleep(0.01)
             self.stop_motion()
 
     def stop_motion(self) -> None:
@@ -127,7 +131,7 @@ class G1TeacherState:
             self.forward = 0.0
             self.side = 0.0
             self.turn = 0.0
-            self.motion_until = 0.0
+            self.motion_remaining = 0.0
             self.last_action = "quieto"
 
     def set_pose(self, overrides: dict[str, float]) -> None:
@@ -203,22 +207,29 @@ class G1TeacherState:
         self,
         dt: float,
     ) -> tuple[float, float, float, float, float, float, float, np.ndarray, str]:
-        now = time.perf_counter()
         with self.lock:
-            if self.motion_until and now >= self.motion_until:
-                self.forward = 0.0
-                self.side = 0.0
-                self.turn = 0.0
-                self.motion_until = 0.0
+            if self.motion_remaining > 0.0:
+                step_dt = min(dt, self.motion_remaining)
+                cos_yaw = math.cos(self.yaw)
+                sin_yaw = math.sin(self.yaw)
+                world_vx = self.forward * cos_yaw - self.side * sin_yaw
+                world_vy = self.forward * sin_yaw + self.side * cos_yaw
 
-            cos_yaw = math.cos(self.yaw)
-            sin_yaw = math.sin(self.yaw)
-            world_vx = self.forward * cos_yaw - self.side * sin_yaw
-            world_vy = self.forward * sin_yaw + self.side * cos_yaw
+                self.base_x += world_vx * step_dt
+                self.base_y += world_vy * step_dt
+                self.yaw += self.turn * step_dt
+                self.motion_remaining -= step_dt
 
-            self.base_x += world_vx * dt
-            self.base_y += world_vy * dt
-            self.yaw += self.turn * dt
+                if self.motion_remaining <= 0.0:
+                    self.forward = 0.0
+                    self.side = 0.0
+                    self.turn = 0.0
+                    self.motion_remaining = 0.0
+                    self.last_action = "quieto"
+            else:
+                world_vx = 0.0
+                world_vy = 0.0
+
             pose = self._pose_with_gait(dt)
             blend = min(1.0, dt * 8.0)
             self.display_pose += (pose - self.display_pose) * blend
@@ -393,6 +404,10 @@ def main() -> None:
 
     lock = threading.Lock()
     viewer = mujoco.viewer.launch_passive(model, data)
+    viewer.cam.lookat[:] = [1.5, -1.5, 0.4]
+    viewer.cam.distance = 5.2
+    viewer.cam.elevation = -35.0
+    viewer.cam.azimuth = 135.0
     api_server = create_api_server(state)
     api_host, api_port = api_server.server_address
 
@@ -411,42 +426,45 @@ def main() -> None:
         if config.PRINT_SCENE_INFORMATION:
             unitree.PrintSceneInformation()
 
+        sim_time = 0.0
+        wall_start = time.perf_counter()
+
         while viewer.is_running():
-            step_start = time.perf_counter()
+            wall_elapsed = time.perf_counter() - wall_start
+            steps_taken = 0
+            while sim_time < wall_elapsed and steps_taken < 10 and viewer.is_running():
+                with lock:
+                    (
+                        base_x,
+                        base_y,
+                        base_z,
+                        yaw,
+                        world_vx,
+                        world_vy,
+                        turn,
+                        target_pose,
+                        _,
+                    ) = state.step(model.opt.timestep)
 
-            with lock:
-                (
-                    base_x,
-                    base_y,
-                    base_z,
-                    yaw,
-                    world_vx,
-                    world_vy,
-                    turn,
-                    target_pose,
-                    _,
-                ) = state.step(model.opt.timestep)
+                    data.xfrc_applied[:] = 0.0
+                    apply_kinematic_base(
+                        model,
+                        data,
+                        base_x,
+                        base_y,
+                        base_z,
+                        yaw,
+                        world_vx,
+                        world_vy,
+                        turn,
+                    )
+                    apply_direct_pose(model, data, target_pose)
+                    mujoco.mj_forward(model, data)
 
-                data.xfrc_applied[:] = 0.0
-                apply_kinematic_base(
-                    model,
-                    data,
-                    base_x,
-                    base_y,
-                    base_z,
-                    yaw,
-                    world_vx,
-                    world_vy,
-                    turn,
-                )
-                apply_direct_pose(model, data, target_pose)
-                mujoco.mj_forward(model, data)
+                sim_time += model.opt.timestep
+                steps_taken += 1
 
-            time_until_next_step = model.opt.timestep - (
-                time.perf_counter() - step_start
-            )
-            if time_until_next_step > 0:
-                time.sleep(time_until_next_step)
+            time.sleep(0.002)
 
         api_server.shutdown()
         api_server.server_close()

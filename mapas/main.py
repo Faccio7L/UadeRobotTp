@@ -80,11 +80,11 @@ def nueva_ubicacion(direccion, posicion):
     return posicion
 
 
-def generar_instrucciones(ruta, orientacion, tamanio):
+def generar_instrucciones(ruta, orientacion):
     """
     Genera la secuencia de giros y avances segun la ruta calculada.
     """
-    orientacionNueva = orientacion.upper()
+    orientacionNueva = orientacion
     pasos = []
        
     for i in range(len(ruta) - 1):
@@ -126,12 +126,12 @@ def ejecutar_en_robot(robot, instrucciones):
     Envia secuencialmente cada orden planificada de manera anterior.
     """
     TiempoAvance = 2
-    TiempoGiro = 3.14
+    TiempoGiro = 3.1416
     for paso in instrucciones:
         if "AVANZAR" in paso:
             robot.movimiento(adelante=0.25, tiempo=TiempoAvance) #ESTO ES METROS Y SEGUNDOS.
         elif "DERECHA" in paso:
-            robot.movimiento(giro=-0.5, tiempo=TiempoGiro) #rota 90 grados en 3.14 segundos(pi)
+            robot.movimiento(giro=-0.5, tiempo=TiempoGiro) 
         elif "IZQUIERDA" in paso:
             robot.movimiento(giro=0.5, tiempo=TiempoGiro)
         elif "180" in paso:
@@ -181,10 +181,10 @@ def algoritmo_greedy(mapa, robot):
         ruta.append(posicion)
         
     if pasos >= maxPasos or posicion != fin:
-        print("El robot no llego al destino.")
+        print(f"El robot no llego al destino. Cantidad de pasos: {pasos}")
 
-    instrucciones = generar_instrucciones(ruta, orientacion, tamanio)
-    print(", ".join(instrucciones)) #para mostrarlas en pantalla.
+    instrucciones = generar_instrucciones(ruta, orientacion) #para mostrar en pantalla y para q ejecute el robot.
+    print(", ".join(instrucciones)) 
 
     if robot:
         ejecutar_en_robot(robot, instrucciones)
