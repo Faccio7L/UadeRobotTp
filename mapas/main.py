@@ -218,12 +218,10 @@ def main():
             print("El algoritmo se ejecutara en la consola.")
             robot = None
 
-    try:
-        algoritmo_greedy(seleccionado, robot)
-    finally:
-        if robot:
-            robot.detenerse()
-            robot.desconectar()
+    
+    algoritmo_greedy(seleccionado, robot)
+    
+        
 
 
 main()
