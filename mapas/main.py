@@ -37,27 +37,27 @@ def Manhattan(inicio, fin):
     return abs(inicio[0]-fin[0]) + abs(inicio[1]-fin[1])
 
 
-def encontrarMejorManhattan(posicion, fin, grilla, posiciones_visitas):
+def encontrarMejorManhattan(posicion, fin, grilla, ruta):
     """
     Calcula Manhattan hacia norte,sur,este y oeste desde un punto inicial. Si se termina el mapa, se recorrio o
     hay un obstaculo, se retorna "infinito".
     """
-    if posicion[1] + 1 >= len(grilla[0]) or grilla[posicion[0]][posicion[1]+1] in (1, 2) or (posicion[0], posicion[1]+1) in posiciones_visitas: 
+    if posicion[1] + 1 >= len(grilla[0]) or grilla[posicion[0]][posicion[1]+1] in (1, 2) or (posicion[0], posicion[1]+1) in ruta: 
         M_derecha = float("inf")
     else:
         M_derecha = Manhattan((posicion[0], posicion[1]+1), fin)
 
-    if posicion[1] - 1 < 0 or grilla[posicion[0]][posicion[1]-1] in (1, 2) or (posicion[0], posicion[1]-1) in posiciones_visitas: 
+    if posicion[1] - 1 < 0 or grilla[posicion[0]][posicion[1]-1] in (1, 2) or (posicion[0], posicion[1]-1) in ruta: 
         M_izquierda = float("inf")
     else:
         M_izquierda = Manhattan((posicion[0], posicion[1]-1), fin)
 
-    if posicion[0] - 1 < 0 or grilla[posicion[0]-1][posicion[1]] in (1, 2) or (posicion[0]-1, posicion[1]) in posiciones_visitas: 
+    if posicion[0] - 1 < 0 or grilla[posicion[0]-1][posicion[1]] in (1, 2) or (posicion[0]-1, posicion[1]) in ruta: 
         M_arriba = float("inf")
     else:
         M_arriba = Manhattan((posicion[0]-1, posicion[1]), fin)
 
-    if posicion[0] + 1 >= len(grilla) or grilla[posicion[0]+1][posicion[1]] in (1, 2) or (posicion[0]+1, posicion[1]) in posiciones_visitas: 
+    if posicion[0] + 1 >= len(grilla) or grilla[posicion[0]+1][posicion[1]] in (1, 2) or (posicion[0]+1, posicion[1]) in ruta: 
         M_abajo = float("inf")
     else:
         M_abajo = Manhattan((posicion[0]+1, posicion[1]), fin)    
@@ -142,16 +142,14 @@ def algoritmo_greedy(mapa, robot):
     """
     Desarma el diccionario del mapa, se itera hasta encontrar(o no) la solucion.
     """
-    posiciones_visitas = set()
     inicio = tuple(mapa["inicio"]) 
     fin = tuple(mapa["destino"])
-    tamanio = mapa["tamano_celda_metros"]
+    #tamanio = mapa["tamano_celda_metros"] comentado por que no se usa.
     orientacion = mapa["orientacion_inicial"]
     maxPasos = mapa["maximo_pasos"]
     posicion = inicio
     pasos = 0
     grilla = mapa["grilla"]
-    posiciones_visitas.add(posicion)
     
     ruta = [posicion]
 
@@ -160,7 +158,7 @@ def algoritmo_greedy(mapa, robot):
             print(f"El robot llegara en {pasos} pasos.")
             break
 
-        M_derecha, M_izquierda, M_arriba, M_abajo = encontrarMejorManhattan(posicion, fin, grilla, posiciones_visitas)
+        M_derecha, M_izquierda, M_arriba, M_abajo = encontrarMejorManhattan(posicion, fin, grilla, ruta)
 
         Manhattan_optimo = min(M_derecha, M_izquierda, M_abajo, M_arriba)
         if Manhattan_optimo == float("inf"):
@@ -177,7 +175,6 @@ def algoritmo_greedy(mapa, robot):
             posicion = nueva_ubicacion("arriba", posicion)
 
         pasos += 1
-        posiciones_visitas.add(posicion)
         ruta.append(posicion)
         
     if pasos >= maxPasos or posicion != fin:
@@ -206,7 +203,7 @@ def main():
                 seleccionado = mapas[mapa]
                 break
 
-        except ValueError:
+        except Exception:
             print("Por favor ingrese un numero valido.")
 
     robot = None
